@@ -72,6 +72,7 @@ public class TypeAdapterGenerator extends AdapterGenerator {
 
     private boolean mGsonVariableUsed = false;
     private boolean mStagFactoryUsed = false;
+    boolean createAnotherConstructor = false;
 
     public TypeAdapterGenerator(@NotNull ClassInfo info) {
         mInfo = info;
@@ -130,7 +131,8 @@ public class TypeAdapterGenerator extends AdapterGenerator {
 
     @NotNull
     private AdapterFieldInfo addAdapterFields(@NotNull TypeSpec.Builder adapterBuilder, @NotNull MethodSpec.Builder constructorBuilder,
-                                              @NotNull Map<Element, TypeMirror> memberVariables,
+                                              @NotNull MethodSpec.Builder constructorBuilderWithAdapter,
+                                              int idx, @NotNull Map<Element, TypeMirror> memberVariables,
                                               @NotNull TypeTokenConstantsGenerator typeTokenConstantsGenerator,
                                               @NotNull Map<TypeVariable, String> typeVarsMap, @NotNull StagGenerator stagGenerator) {
 
@@ -183,6 +185,10 @@ public class TypeAdapterGenerator extends AdapterGenerator {
                     TypeName typeName = getAdapterFieldTypeName(fieldType);
                     adapterBuilder.addField(typeName, originalFieldName, Modifier.PRIVATE, Modifier.FINAL);
                     constructorBuilder.addStatement(fieldName + " = (TypeAdapter<" + fieldType + ">) gson.getAdapter(" + getTypeTokenCode(fieldType, typeVarsMap, typeTokenConstantsGenerator) + ")");
+                    for (int i = 0; i < idx; i++) {
+                        constructorBuilderWithAdapter.addStatement(fieldName + " = typeAdapter" + "[" + String.valueOf(i) + "]");
+                        createAnotherConstructor = true;
+                    }
                 }
             }
         }
@@ -390,6 +396,11 @@ public class TypeAdapterGenerator extends AdapterGenerator {
                 .addParameter(Gson.class, "gson")
                 .addParameter(stagFactoryTypeName, "stagFactory");
 
+        MethodSpec.Builder constructorBuilderWithAdapter = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(Gson.class, "gson")
+                .addParameter(stagFactoryTypeName, "stagFactory");
+
         String className = FileGenUtils.unescapeEscapedString(mInfo.getTypeAdapterClassName());
         TypeSpec.Builder adapterBuilder = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
@@ -415,14 +426,17 @@ public class TypeAdapterGenerator extends AdapterGenerator {
             if (idx > 0) {
                 constructorBuilder.addParameter(Type[].class, "type");
                 constructorBuilder.varargs(true);
+
+                constructorBuilderWithAdapter.addParameter(TypeAdapter[].class, "typeAdapter");
+                constructorBuilderWithAdapter.varargs(true);
             }
         }
 
         AnnotatedClass annotatedClass = SupportedTypesModel.getInstance().getSupportedType(typeMirror);
         Map<Element, TypeMirror> memberVariables = annotatedClass.getMemberVariables();
 
-        AdapterFieldInfo adapterFieldInfo = addAdapterFields(adapterBuilder, constructorBuilder, memberVariables,
-                typeTokenConstantsGenerator, typeVarsMap, stagGenerator);
+        AdapterFieldInfo adapterFieldInfo = addAdapterFields(adapterBuilder, constructorBuilder, constructorBuilderWithAdapter, idx,
+                memberVariables, typeTokenConstantsGenerator, typeVarsMap, stagGenerator);
 
         MethodSpec writeMethod = getWriteMethodSpec(typeVariableName, memberVariables, adapterFieldInfo);
         MethodSpec readMethod = getReadMethodSpec(typeVariableName, memberVariables, adapterFieldInfo);
@@ -430,13 +444,18 @@ public class TypeAdapterGenerator extends AdapterGenerator {
         if(mGsonVariableUsed) {
             adapterBuilder.addField(Gson.class, "mGson", Modifier.FINAL, Modifier.PRIVATE);
             constructorBuilder.addStatement("this.mGson = gson");
+            constructorBuilderWithAdapter.addStatement("this.mGson = gson");
         }
 
         if(mStagFactoryUsed) {
             adapterBuilder.addField(stagFactoryTypeName, "mStagFactory", Modifier.FINAL, Modifier.PRIVATE);
             constructorBuilder.addStatement("this.mStagFactory = stagFactory");
+            constructorBuilderWithAdapter.addStatement("this.mStagFactory = stagFactory");
         }
 
+        if (createAnotherConstructor) {
+            adapterBuilder.addMethod(constructorBuilderWithAdapter.build());
+        }
         adapterBuilder.addMethod(constructorBuilder.build());
         adapterBuilder.addMethod(writeMethod);
         adapterBuilder.addMethod(readMethod);

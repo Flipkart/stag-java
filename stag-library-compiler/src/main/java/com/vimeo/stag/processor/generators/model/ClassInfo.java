@@ -126,4 +126,16 @@ public class ClassInfo {
     public List<? extends TypeMirror> getTypeArguments() {
         return TypeUtils.getTypeArguments(mType);
     }
+
+    @Nullable
+    public String getNonParamterizedClassName(ClassInfo classInfo) {
+        int idx = classInfo.getType().toString().indexOf("<");
+
+        String classname = null;
+        if (idx > 0) {
+            classname = classInfo.getType().toString().substring(0, idx);
+        }
+
+        return classname;
+    }
 }
