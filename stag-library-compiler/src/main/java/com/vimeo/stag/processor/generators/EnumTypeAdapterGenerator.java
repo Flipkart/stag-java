@@ -75,7 +75,6 @@ public class EnumTypeAdapterGenerator extends AdapterGenerator {
             }
         }
 
-
         MethodSpec writeMethod = getWriteMethodSpec(typeVariableName);
         MethodSpec readMethod = getReadMethodSpec(typeVariableName);
 
@@ -87,6 +86,7 @@ public class EnumTypeAdapterGenerator extends AdapterGenerator {
 
         CodeBlock.Builder staticBlockBuilder = CodeBlock.builder();
         staticBlockBuilder.addStatement("NAME_TO_CONSTANT = new HashMap<>(" + nameToConstant.size() + ")");
+
         for(Map.Entry<String, Element> entry : nameToConstant.entrySet()) {
             staticBlockBuilder.addStatement("NAME_TO_CONSTANT.put(\"" + entry.getKey() + "\", " + typeVariableName + "." + entry.getValue().getSimpleName().toString() + ")");
         }
@@ -98,11 +98,9 @@ public class EnumTypeAdapterGenerator extends AdapterGenerator {
         }
 
         adapterBuilder.addStaticBlock(staticBlockBuilder.build());
-
         adapterBuilder.addMethod(constructorBuilder.build());
         adapterBuilder.addMethod(writeMethod);
         adapterBuilder.addMethod(readMethod);
-
 
         return adapterBuilder.build();
     }
@@ -137,6 +135,4 @@ public class EnumTypeAdapterGenerator extends AdapterGenerator {
         builder.addStatement("return NAME_TO_CONSTANT.get(reader.nextString())");
         return builder.build();
     }
-
-
 }

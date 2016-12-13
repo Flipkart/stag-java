@@ -20,4 +20,5 @@ public class ClassWithMapTypes {
 
     public Map<String, List<Video>> mapOfLists;
 
+    public GenericClass<Video> videoGenericClass;
 }
