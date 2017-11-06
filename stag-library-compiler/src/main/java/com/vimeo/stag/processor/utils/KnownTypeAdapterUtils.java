@@ -17,13 +17,11 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Currency;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -39,8 +37,6 @@ import static com.vimeo.stag.processor.utils.TypeUtils.className;
 public final class KnownTypeAdapterUtils {
 
     @NotNull private static final HashMap<String, String> KNOWN_TYPE_ADAPTERS = new HashMap<>();
-    @NotNull private static final HashMap<String, String> SUPPORTED_COLLECTION_INSTANTIATORS = new HashMap<>();
-    @NotNull private static final HashMap<String, String> SUPPORTED_MAP_INSTANTIATORS = new HashMap<>();
     @NotNull private static final HashMap<String, String> KNOWN_PRIMITIVE_ARRAY_TYPE_ADAPTERS = new HashMap<>();
     @NotNull private static final HashMap<String, String> KNOWN_PRIMITIVE_TYPE_ADAPTERS = new HashMap<>();
 
@@ -94,15 +90,6 @@ public final class KnownTypeAdapterUtils {
         KNOWN_PRIMITIVE_TYPE_ADAPTERS.put(float.class.getSimpleName(), className(KnownTypeAdapters.PrimitiveFloatTypeAdapter.class));
         KNOWN_PRIMITIVE_TYPE_ADAPTERS.put(boolean.class.getSimpleName(), className(KnownTypeAdapters.PrimitiveBooleanTypeAdapter.class));
         KNOWN_PRIMITIVE_TYPE_ADAPTERS.put(byte.class.getSimpleName(), className(KnownTypeAdapters.PrimitiveByteTypeAdapter.class));
-
-        SUPPORTED_COLLECTION_INSTANTIATORS.put(ArrayList.class.getName(), className(KnownTypeAdapters.ArrayListInstantiator.class));
-        SUPPORTED_COLLECTION_INSTANTIATORS.put(List.class.getName(), className(KnownTypeAdapters.ListInstantiator.class));
-        SUPPORTED_COLLECTION_INSTANTIATORS.put(Collection.class.getName(), className(KnownTypeAdapters.CollectionInstantiator.class));
-
-        SUPPORTED_MAP_INSTANTIATORS.put(Map.class.getName(), className(KnownTypeAdapters.MapInstantiator.class));
-        SUPPORTED_MAP_INSTANTIATORS.put(HashMap.class.getName(), className(KnownTypeAdapters.HashMapInstantiator.class));
-        SUPPORTED_MAP_INSTANTIATORS.put(LinkedHashMap.class.getName(), className(KnownTypeAdapters.LinkedHashMapInstantiator.class));
-        SUPPORTED_MAP_INSTANTIATORS.put(ConcurrentHashMap.class.getName(), className(KnownTypeAdapters.ConcurrentHashMapInstantiator.class));
     }
 
     @NotNull
@@ -147,13 +134,28 @@ public final class KnownTypeAdapterUtils {
      */
     @NotNull
     public static String getListInstantiator(@NotNull TypeMirror typeMirror) {
-        String outerClassType = TypeUtils.getOuterClassType(typeMirror);
-        DeclaredType declaredType = typeMirror instanceof DeclaredType ? (DeclaredType) typeMirror : null;
-        TypeMirror valueType = declaredType != null && declaredType.getTypeArguments() != null &&
-                               !declaredType.getTypeArguments().isEmpty() ? declaredType.getTypeArguments()
-                .get(0) : null;
-        String postFix = valueType != null ? "<" + valueType.toString() + ">()" : "()";
-        return "new " + SUPPORTED_COLLECTION_INSTANTIATORS.get(outerClassType) + postFix;
+        /*if(TypeUtils.isAbstract(typeMirror)) {
+            DeclaredType declaredType = typeMirror instanceof DeclaredType ? (DeclaredType) typeMirror : null;
+            TypeMirror elementType = declaredType != null && declaredType.getTypeArguments() != null &&
+                    declaredType.getTypeArguments().size() == 1 ? declaredType.getTypeArguments()
+                    .get(0) : null;
+            String name = ArrayList.class.getName();
+
+            if(null != elementType) {
+                name = ArrayList.class.getName() + "<" + elementType.toString() + ">";
+            } else {
+                name = ;
+            }
+            //System.out.println("-----------------------------" + name + "------------------------------------");
+            //boolean b = TypeUtils.isAssignable(ElementUtils.getTypeFromQualifiedName(name), typeMirror);
+            //System.out.println("-----------------------------" + b + ":" + typeMirror.toString() + ":" + name + "------------------------------------");
+
+        }*/
+
+        String instantiationCode = TypeUtils.isAbstract(typeMirror) ? ArrayList.class.getName() : TypeUtils.getOuterClassType(typeMirror);
+        return "new com.google.gson.internal.ObjectConstructor<" + typeMirror.toString() + ">(){" +
+                "\t@Override" +
+                "\tpublic " + typeMirror.toString() + " construct() { return new " + instantiationCode + "<>();}}";
     }
 
     /**
@@ -172,25 +174,17 @@ public final class KnownTypeAdapterUtils {
         TypeMirror paramType = declaredType != null && declaredType.getTypeArguments() != null &&
                                declaredType.getTypeArguments().size() == 2 ? declaredType.getTypeArguments()
                 .get(1) : null;
-        String postFix = keyType != null && paramType != null ?
-                "<" + keyType.toString() + ", " + paramType.toString() + ">()" : "()";
-
-        String instantiator = SUPPORTED_MAP_INSTANTIATORS.get(outerClassType);
-
-        if (instantiator != null) {
-            return "new " + instantiator + postFix;
-        } else {
-            String params = keyType != null && paramType != null ?
-                    "<" + keyType.toString() + ", " + paramType.toString() + ">" : "";
-            return "new " + className(com.google.gson.internal.ObjectConstructor.class) + "<" +
-                   outerClassType + params + ">() " +
-                   "{ " +
-                   "\n@Override " +
-                   "\npublic " + outerClassType + params + " construct() {" +
-                   "\n\treturn new " + outerClassType + params + "();" +
-                   "\n}" +
-                   "}";
-        }
+        String params = keyType != null && paramType != null ?
+                "<" + keyType.toString() + ", " + paramType.toString() + ">" : "";
+        String instantiatedClass = TypeUtils.isAbstract(typeMirror) ? LinkedHashMap.class.getName() : outerClassType;
+        return "new " + className(com.google.gson.internal.ObjectConstructor.class) + "<" +
+                outerClassType + params + ">() " +
+                "{ " +
+                "\n@Override " +
+                "\npublic " + outerClassType + params + " construct() {" +
+                "\n\treturn new " + instantiatedClass + params + "();" +
+                "\n}" +
+                "}";
     }
 
     /**

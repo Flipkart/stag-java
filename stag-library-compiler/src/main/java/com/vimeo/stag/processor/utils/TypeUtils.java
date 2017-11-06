@@ -39,7 +39,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
@@ -504,27 +503,35 @@ public final class TypeUtils {
      * @return boolean
      */
     public static boolean isSupportedList(@Nullable TypeMirror type) {
-        if (type == null) {
-            return false;
-        }
-        String outerClassType = TypeUtils.getOuterClassType(type);
-        return outerClassType.equals(ArrayList.class.getName()) ||
-            outerClassType.equals(List.class.getName()) ||
-            outerClassType.equals(Collection.class.getName());
+        return (type != null) && isAssignableFrom(type, Collection.class);
     }
 
-    /**
-     * Method to check if the {@link TypeMirror} is of {@link Object}
-     *
-     * @param type :TypeMirror type
-     * @return boolean
-     */
-    public static boolean isNativeObject(@Nullable TypeMirror type) {
-        if (type == null) {
-            return false;
-        }
+    public static boolean isAssignableFrom(@NotNull TypeMirror type, @NotNull Class clazz) {
         String outerClassType = TypeUtils.getOuterClassType(type);
-        return outerClassType.equals(Object.class.getName());
+        if(clazz.getName().equals(outerClassType)) {
+            return true;
+        }
+        if (type instanceof DeclaredType) {
+            Element element = ((DeclaredType) type).asElement();
+            while (element instanceof TypeElement) {
+                TypeMirror typeMirror = ((TypeElement)element).getSuperclass();
+                outerClassType = TypeUtils.getOuterClassType(typeMirror);
+                if(clazz.getName().equals(outerClassType)) {
+                    return true;
+                }
+                List<? extends TypeMirror> interfaces = ((TypeElement)element).getInterfaces();
+                if(null != interfaces) {
+                    for(TypeMirror iface : interfaces) {
+                        outerClassType = TypeUtils.getOuterClassType(iface);
+                        if(clazz.getName().equals(outerClassType)) {
+                            return true;
+                        }
+                    }
+                }
+                element = typeMirror instanceof DeclaredType ? ((DeclaredType) typeMirror).asElement() : null;
+            }
+        }
+        return false;
     }
 
     /**
@@ -534,16 +541,7 @@ public final class TypeUtils {
      * @return boolean
      */
     public static boolean isSupportedMap(@Nullable TypeMirror type) {
-        if (type == null) {
-            return false;
-        }
-        String outerClassType = TypeUtils.getOuterClassType(type);
-        return outerClassType.equals(Map.class.getName()) ||
-            outerClassType.equals(HashMap.class.getName()) ||
-            outerClassType.equals(ConcurrentHashMap.class.getName()) ||
-            outerClassType.equals("android.util.ArrayMap") ||
-            outerClassType.equals("android.support.v4.util.ArrayMap") ||
-            outerClassType.equals(LinkedHashMap.class.getName());
+        return type != null && isAssignableFrom(type, Map.class);
     }
 
     /**
