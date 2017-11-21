@@ -47,7 +47,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -189,7 +188,10 @@ public final class StagProcessor extends AbstractProcessor {
 
                     ClassInfo classInfo = new ClassInfo(element.asType());
                     if (previousPackageName != null && !previousPackageName.equals(classInfo.getPackageName())) {
-                        adapterFactoryMap.put(classInfo.getPackageName(), Collections.singletonList(classInfo));
+                        classInfoList.clear();
+                        classInfoList.add(classInfo);
+                        adapterFactoryMap.put(classInfo.getPackageName(), new ArrayList<>(classInfoList));
+                        classInfoList.clear();
                     } else {
                         previousPackageName = classInfo.getPackageName();
                         classInfoList.add(classInfo);
