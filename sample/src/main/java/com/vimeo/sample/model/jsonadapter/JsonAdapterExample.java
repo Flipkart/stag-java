@@ -24,12 +24,12 @@ public class JsonAdapterExample {
 
 
     @SerializedName("alternate_model")
-    @JsonAdapter(value = com.vimeo.sample_model.stag.generated.Stag.Factory.class)
+//    @JsonAdapter(value = com.vimeo.sample_model.stag.generated.Stag.Factory.class)
     public com.vimeo.sample_model.AlternateNameModel mRunTimeExample;
 
 
     @SerializedName("alternate_model1")
-    @JsonAdapter(value = com.vimeo.sample_model.AlternateNameModel$TypeAdapter.class)
+//    @JsonAdapter(value = com.vimeo.sample_model.AlternateNameModel$TypeAdapter.class)
     public com.vimeo.sample_model.AlternateNameModel mRunTimeExample1;
 
     @SerializedName("user")

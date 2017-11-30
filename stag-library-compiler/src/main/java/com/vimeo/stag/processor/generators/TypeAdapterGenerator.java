@@ -249,7 +249,7 @@ public class TypeAdapterGenerator extends AdapterGenerator {
                 for (VariableElement parameter : adapterType.getParameters()) {
                     if (parameter.asType().toString().equals(TypeUtils.className(Gson.class))) {
                         constructorParameters.add("gson");
-                        constructorParameters.add("new " + classInfo.getPackageName() + ".stag.generated.Stag.Factory()");
+//                        constructorParameters.add("new " + classInfo.getPackageName() + ".stag.generated.Stag.Factory()");
                     }
                 }
             }
