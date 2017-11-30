@@ -53,13 +53,15 @@ public class EnumTypeAdapterGenerator extends AdapterGenerator {
 
     @NotNull
     private final ClassInfo mInfo;
-
     @NotNull
     private final TypeElement mElement;
+    @NotNull
+    private final String mStagFactoryGeneratedName;
 
-    public EnumTypeAdapterGenerator(@NotNull ClassInfo info, @NotNull TypeElement element) {
+    public EnumTypeAdapterGenerator(@NotNull ClassInfo info, @NotNull TypeElement element, @NotNull String stagFactoryGeneratedName) {
         mInfo = info;
         mElement = element;
+        mStagFactoryGeneratedName = stagFactoryGeneratedName;
     }
 
     @NotNull
@@ -108,7 +110,8 @@ public class EnumTypeAdapterGenerator extends AdapterGenerator {
 
         MethodSpec.Builder constructorBuilder = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(Gson.class, "gson");
+                .addParameter(Gson.class, "gson")
+                .addParameter(TypeVariableName.get(mStagFactoryGeneratedName), "stagFactory");
 
         String className = FileGenUtils.unescapeEscapedString(mInfo.getTypeAdapterClassName());
         TypeSpec.Builder adapterBuilder = TypeSpec.classBuilder(className)
@@ -142,29 +145,29 @@ public class EnumTypeAdapterGenerator extends AdapterGenerator {
 
         TypeName typeName =
                 ParameterizedTypeName.get(ClassName.get(HashMap.class), TypeVariableName.get(String.class),
-                                          TypeVariableName.get(typeMirror));
+                        TypeVariableName.get(typeMirror));
         adapterBuilder.addField(typeName, "NAME_TO_CONSTANT", Modifier.PRIVATE, Modifier.STATIC,
-                                Modifier.FINAL);
+                Modifier.FINAL);
 
         typeName = ParameterizedTypeName.get(ClassName.get(HashMap.class), TypeVariableName.get(typeMirror),
-                                             TypeVariableName.get(String.class));
+                TypeVariableName.get(String.class));
         adapterBuilder.addField(typeName, "CONSTANT_TO_NAME", Modifier.PRIVATE, Modifier.STATIC,
-                                Modifier.FINAL);
+                Modifier.FINAL);
 
         CodeBlock.Builder staticBlockBuilder = CodeBlock.builder();
         staticBlockBuilder.addStatement("NAME_TO_CONSTANT = new HashMap<>(" + nameToConstant.size() + ")");
         for (Map.Entry<String, Element> entry : nameToConstant.entrySet()) {
             staticBlockBuilder.addStatement(
                     "NAME_TO_CONSTANT.put(\"" + entry.getKey() + "\", " + typeVariableName + "." +
-                    entry.getValue().getSimpleName().toString() + ")");
+                            entry.getValue().getSimpleName().toString() + ")");
         }
 
         staticBlockBuilder.add("\n");
         staticBlockBuilder.addStatement("CONSTANT_TO_NAME = new HashMap<>(" + constantToName.size() + ")");
         for (Map.Entry<Element, String> entry : constantToName.entrySet()) {
             staticBlockBuilder.addStatement("CONSTANT_TO_NAME.put(" + typeVariableName + "." +
-                                            entry.getKey().getSimpleName().toString() + ", \"" +
-                                            entry.getValue() + "\")");
+                    entry.getKey().getSimpleName().toString() + ", \"" +
+                    entry.getValue() + "\")");
         }
 
         adapterBuilder.addStaticBlock(staticBlockBuilder.build());
