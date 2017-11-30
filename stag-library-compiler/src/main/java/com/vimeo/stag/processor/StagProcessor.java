@@ -182,7 +182,7 @@ public final class StagProcessor extends AbstractProcessor {
             for (AnnotatedClass annotatedClass : supportedTypesModel.getSupportedTypes()) {
                 TypeElement element = annotatedClass.getElement();
                 if ((TypeUtils.isConcreteType(element) || TypeUtils.isParameterizedType(element)) && !TypeUtils.isAbstract(element)) {
-                    generateTypeAdapter(supportedTypesModel, element, stagFactoryGenerator);
+                    generateTypeAdapter(supportedTypesModel, element, stagFactoryGenerator, stagFactoryGeneratedName);
 
                     ClassInfo classInfo = new ClassInfo(element.asType());
                     ArrayList<ClassInfo> result = new ArrayList<>();
@@ -199,7 +199,7 @@ public final class StagProcessor extends AbstractProcessor {
             List<String> generatedStagFactoryWrappers = new ArrayList<>();
             for (Map.Entry<String, List<ClassInfo>> stringListEntry : adapterFactoryMap.entrySet()) {
                 List<ClassInfo> classInfos = stringListEntry.getValue();
-                generateAdapterFactory(classInfos, stringListEntry.getKey());
+                generateAdapterFactory(classInfos, stringListEntry.getKey(), stagFactoryGeneratedName);
                 generatedStagFactoryWrappers.add(stringListEntry.getKey() + "." + StagFactoryGenerator.NAME);
             }
 
@@ -214,8 +214,8 @@ public final class StagProcessor extends AbstractProcessor {
         return true;
     }
 
-    private void generateAdapterFactory(List<ClassInfo> classInfos, String packageName) throws IOException {
-        StagFactoryGenerator stagFactoryGenerator = new StagFactoryGenerator(classInfos, StagFactoryGenerator.NAME);
+    private void generateAdapterFactory(List<ClassInfo> classInfos, String packageName, String stagGeneratedName) throws IOException {
+        StagFactoryGenerator stagFactoryGenerator = new StagFactoryGenerator(classInfos, StagFactoryGenerator.NAME, stagGeneratedName);
 
         // Create the type spec
         TypeSpec typeAdapterSpec = stagFactoryGenerator.getTypeAdapterFactorySpec();
@@ -236,13 +236,13 @@ public final class StagProcessor extends AbstractProcessor {
 
     private void generateTypeAdapter(@NotNull SupportedTypesModel supportedTypesModel,
                                      @NotNull TypeElement element,
-                                     @NotNull StagGenerator stagGenerator) throws IOException {
+                                     @NotNull StagGenerator stagGenerator, String stagFactoryGeneratedName) throws IOException {
 
         ClassInfo classInfo = new ClassInfo(element.asType());
 
         AdapterGenerator independentAdapter = element.getKind() == ElementKind.ENUM ?
-                new EnumTypeAdapterGenerator(classInfo, element) :
-                new TypeAdapterGenerator(supportedTypesModel, classInfo);
+                new EnumTypeAdapterGenerator(classInfo, element, stagFactoryGeneratedName) :
+                new TypeAdapterGenerator(supportedTypesModel, classInfo, stagFactoryGeneratedName);
 
         // Create the type spec
         TypeSpec typeAdapterSpec = independentAdapter.createTypeAdapterSpec(stagGenerator);
